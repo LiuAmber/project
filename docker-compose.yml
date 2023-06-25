@@ -1,0 +1,39 @@
+version: "3"
+volumes: # 自定义数据卷，位于宿主机/var/lib/docker/volumes内
+    db_vol: #定义数据卷同步存放容器内mysql数据: # 定义数据卷同步容器内mysql数据
+networks: # 自定义网络(默认桥接), 不使用links通信
+  db_network:
+    driver: bridge
+services:
+  db:
+    image: mysql
+    env_file:  
+      - ./docker_project/.env # 使用了环境变量文件
+    networks:  
+      - db_network
+    volumes:
+      - db_vol:/var/lib/mysql:rw # 挂载数据库数据, 可读可写
+      - ./compose/mysql/conf/my.cnf:/etc/mysql/my.cnf # 挂载配置文件
+      - ./compose/mysql/init:/docker-entrypoint-initdb.d/ # 挂载数据初始化sql脚本
+    ports:
+      - "5007:5007" # 与配置文件保持一致
+    restart: always
+ 
+  web:
+    build: ./docker_project # 使用myproject目录下的Dockerfile
+    expose:
+       - "8000"
+    volumes:
+       - ./myproject:./myproject_docker/docker_project # 挂载项目代码
+
+    links:
+       - db
+
+    depends_on: # 依赖关系
+       - db
+
+    environment:
+       - DEBUG=False
+    restart: always
+    tty: true
+    stdin_open: true
